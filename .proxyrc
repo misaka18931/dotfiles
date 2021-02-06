@@ -1,0 +1,11 @@
+# prox yenv setting file
+export http_proxy="http://localhost:8889"
+export ftp_proxy="ftp://localhost:8889"
+export rsync_proxy="rsync://localhost:8889"
+export no_proxy="localhost,127.0.0.1,192.168.1.1,::1,*.local"
+export HTTP_PROXY="http://localhost:8889"
+export FTP_PROXY="ftp://localhost:8889"
+export RSYNC_PROXY="rsync://localhost:8889"
+export NO_PROXY="localhost,127.0.0.1,192.168.1.1,::1,*.local"
+export https_proxy="http://localhost:8889"
+export HTTPS_PROXY="http://localhost:8889"

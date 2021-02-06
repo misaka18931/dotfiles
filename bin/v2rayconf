@@ -1,0 +1,130 @@
+#!/bin/bash
+# V2Ray subscription management script
+# Date: 01-23-21
+
+# color
+stairspeedtest="$HOME/.local/share/stairspeedtest/stairspeedtest"
+vmess2json=$HOME/.local/bin/vmess2json.py
+dir=$HOME/.local/share/v2rayconf
+RED='\033[0;31m'
+NC='\033[0m'
+valid_url='^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$'
+
+checker() {
+  if ! [ -d "$dir" ] ;then
+    mkdir -p "$dir" || error_exit "check $dir plz!"
+  fi
+  if ! [ -x "$stairspeedtest" ] || ! [ -x "$vmess2json" ] ;then
+    error_exit "no stairspeedtest or vmess2json install found!"
+  fi
+}
+
+error() {
+  echo -e "$0: ${RED}error:${NC} $@"
+}
+error_exit() {
+  echo -e "$0: ${RED}error:${NC} $@"
+  exit 1
+}
+
+testing() {
+  $stairspeedtest < "$dir/link" 2> /dev/null >/dev/null &
+  echo "connection test is on, whtch may last quite a while"
+  echo "DO NOT CLOSE THIS TERMINAL"
+  wait
+  if [[ $(tty) =~ "/dev/tty[0-9]*" ]] ;then # no GUI
+    find ~/.local/share/stairspeedtest/results/ -name '*.log' -exec less {} \;
+  else
+    find ~/.local/share/stairspeedtest/results/ -name '*.png' -exec feh -x {} \;
+  fi
+}
+
+test_link() {
+  if ! [ -f "$dir/link" ] ;then
+    error_exit "no link avalible!"
+  fi
+  rm -rf ~/.local/share/stairspeedtest/results/*
+  testing &
+}
+
+choose() {
+  cat "$dir/sub" | sudo $vmess2json --update /etc/v2ray/config.json
+  sudo systemctl restart v2ray
+}
+
+link_update() {
+  link="$@"
+  echo "$link" | egrep -q -E "$valid_url" || error_exit "invalid URL $link"
+  if [ -f "$dir/sub" ] ;then
+    cat "$dir/sub" > "$dir/sub.bak"
+  fi
+  if [ -f "$dir/link" ] ;then
+    cat "$dir/link" > "$dir/link.bak"
+  fi
+  echo "$link" > "$dir/link"
+  update 
+  echo "subscription updated!"
+}
+
+
+update() {
+  curl --noproxy "*" "$(cat $dir/link)" > "$dir/sub" || error_exit 'Network faild'
+  echo "subscription updated!"
+}
+
+revert() {
+  if [ -f "$dir/sub.bak" ] ;then
+    cat "$dir/sub.bak" > "$dir/sub"
+  else
+    error_exit "no backups!"
+  fi
+  if [ -f "$dir/link.bak" ] ;then
+    cat "$dir/link.bak" > "$dir/link"
+  fi
+  echo "reverted to latest backup!"
+}
+
+usage() {
+  echo "usage: v2rayconf <action> [args]"
+  echo "Avaliable actions:"
+  echo "  link_upd [link]        update subscription link"
+  echo "  rev                    revert to previous subscription"
+  echo "  upd (update)           update subscription data"
+  echo "  test                   test connection speed (stairspeedtest-reborn)"
+  echo "  ch                     change current connection (sudo privilege required)"
+
+}
+
+main() {
+  checker
+  if [ $# -eq 0 ] ;then
+    usage
+    exit
+  fi
+  act=$1
+  shift 1
+  case "$act" in
+    link_upd)
+      link_update "$@"
+      ;;
+    upd|update)
+      update
+      ;;
+    test)
+      test_link
+      ;;
+    ch)
+      choose "$@"
+      ;;
+    rev)
+      revert
+      ;;
+    *)
+      error "invalid action: $act"
+      usage
+      ;;
+  esac
+}
+
+main "$@"
+
