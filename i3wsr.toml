@@ -1,0 +1,6 @@
+[general]
+#wm_property = "instance"
+separator = " | "
+
+[options]
+remove_duplicates = true
